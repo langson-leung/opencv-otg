@@ -4,6 +4,13 @@
 #pragma comment(lib, "C:/opencv/build/lib/Debug/opencv_imgproc249d.lib")
 #pragma comment(lib, "C:/opencv/build/lib/Debug/opencv_highgui249d.lib")
 
+static void onMouse(int ev, int x, int y, int flags, void*)
+{
+	std::cout << "event = " << ev 
+		<< ", x = " << x << ", y = " << y 
+		<< ", flags = " << flags << std::endl;
+}
+
 int main(int argc, char *argv[])
 {
 	int err = 0;
@@ -14,6 +21,7 @@ int main(int argc, char *argv[])
 		goto hell;
 	}
 	cv::namedWindow("CaptureScene");
+	cv::setMouseCallback("CaptureScene", onMouse, NULL);
 
 	do {
 		vCapture->read(videoFrame);
@@ -53,6 +61,27 @@ int main(int argc, char *argv[])
 		}
 		cv::imshow("hist", histImg);
 		/////////////////////////////////////////////////////////////////////////*/
+		cv::Mat sBinary = hsv[1].clone();
+		//cv::equalizeHist(sBinary, sBinary);
+		cv::threshold(sBinary, sBinary, 0, 255, cv::THRESH_BINARY_INV|cv::THRESH_OTSU);
+		cv::vector<cv::vector<cv::Point>> contours;
+		cv::findContours(sBinary, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+		double maxArea = 0.0; int maxAreaIdx = -1;
+		for (unsigned int i = 0; i < contours.size(); ++i) {
+			cv::vector<cv::Point> contour = contours.at(i);
+			double area = contourArea(contour);
+			if (area > maxArea) {
+				maxArea = area;
+				maxAreaIdx = i;
+			}
+		}
+		if (maxAreaIdx >= 0) {
+			cv::vector<cv::Point> maxAreaContour = contours.at(maxAreaIdx);
+			//cv::approxPolyDP(maxAreaContour, maxAreaContour, 0.8, true);
+			contours.clear();
+			contours.push_back(maxAreaContour);
+			cv::drawContours(videoFrame, contours, -1, cv::Scalar(222, 0, 0));
+		}
 
 		cv::imshow("hComponent", hsv[0]);
 		cv::imshow("sComponent", hsv[1]);
